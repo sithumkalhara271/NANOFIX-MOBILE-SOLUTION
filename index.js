@@ -3,10 +3,23 @@ const qrcode = require('qrcode-terminal');
 const yts = require('yt-search');
 const axios = require('axios');
 
+// Render එකේදී Chrome තියෙන තැන හොයා ගැනීමට
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process', // අඩු RAM එකක් පාවිච්චි කිරීමට
+            '--disable-gpu'
+        ],
+        // Render එකේදී Chrome path එක ඔටෝම ගනී
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
     }
 });
 
@@ -28,25 +41,19 @@ client.on('message', async (msg) => {
         try {
             msg.reply('සින්දුව සොයමින් පවතී... කරුණාකර රැඳී සිටින්න.');
             
-            // සින්දුව සර්ච් කිරීම
             const search = await yts(songName);
             const video = search.videos[0];
 
             if (!video) return msg.reply('සින්දුව සොයා ගැනීමට නොහැකි විය.');
 
-            // මෙතනදී අපි සින්දුව MP3 එකක් විදිහට ගන්න API එකක් පාවිච්චි කරනවා
-            // සටහන: මෙහිදී සින්දුව ඩවුන්ලෝඩ් කරන URL එක ලබාගත යුතුය
             const songUrl = video.url;
             
-            // සරලව තොරතුරු යැවීම
             await msg.reply(`*සොයාගත් සින්දුව:* ${video.title}\n*කාලය:* ${video.timestamp}\n\nMP3 එක සකසමින් පවතී...`);
 
-            // සින්දුව MP3 එකක් ලෙස යැවීමට මෙතැනට තවත් කෝඩ් කොටසක් අවශ්‍ය වේ
-            // දැනට අපි link එක එවමු. සම්පූර්ණ file එක යැවීමට API එකක් අවශ්‍යයි.
             msg.reply(`මෙන්න ලින්ක් එක: ${songUrl}`);
 
         } catch (e) {
-            console.log(e);
+            console.error(e);
             msg.reply('Error එකක් ආවා. පසුව උත්සාහ කරන්න.');
         }
     }
