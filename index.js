@@ -1,9 +1,8 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const yts = require('yt-search');
 const axios = require('axios');
 
-// Render එකේදී Chrome තියෙන තැන හොයා ගැනීමට
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -12,14 +11,11 @@ const client = new Client({
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process', // අඩු RAM එකක් පාවිච්චි කිරීමට
-            '--disable-gpu'
+            '--single-process',
+            '--no-zygote'
         ],
-        // Render එකේදී Chrome path එක ඔටෝම ගනී
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
+        // Render එකේදී chrome install වන සාමාන්‍ය ස්ථානය
+        executablePath: '/usr/bin/google-chrome-stable' 
     }
 });
 
@@ -48,9 +44,7 @@ client.on('message', async (msg) => {
 
             const songUrl = video.url;
             
-            await msg.reply(`*සොයාගත් සින්දුව:* ${video.title}\n*කාලය:* ${video.timestamp}\n\nMP3 එක සකසමින් පවතී...`);
-
-            msg.reply(`මෙන්න ලින්ක් එක: ${songUrl}`);
+            await msg.reply(`*සොයාගත් සින්දුව:* ${video.title}\n*කාලය:* ${video.timestamp}\n\nමෙන්න ලින්ක් එක: ${songUrl}`);
 
         } catch (e) {
             console.error(e);
