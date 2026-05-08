@@ -7,26 +7,31 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
+        // RAM එක ඉතිරි කර ගැනීමට මෙම args ඉතා වැදගත් වේ
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--no-first-run',
+            '--single-process',
             '--no-zygote',
-            '--single-process'
+            '--disable-gpu',
+            '--disable-canvas-aa',
+            '--disable-2d-canvas-clip-utils',
+            '--disable-gl-drawing-for-tests',
+            '--no-first-run',
+            '--mute-audio'
         ]
     }
 });
 
-// QR Code එක පෙන්වීමට (ලින්ක් එකක් ලෙස සහ ටර්මිනල් එකේ)
+// QR එක පෙන්වීමට
 client.on('qr', (qr) => {
-    // 1. ටර්මිනල් එකේ පෙන්වීම
+    // Terminal එකේ පෙන්වීම
     qrcode.generate(qr, { small: true });
     
-    // 2. ෆෝන් එකෙන් ස්කෑන් කරන්න ලේසි වෙන්න ලින්ක් එකක් පෙන්වීම
+    // ෆෝන් එකෙන් බලන්න ලින්ක් එක
     console.log('--------------------------------------------------');
-    console.log('QR එක ස්කෑන් කිරීමට අපහසු නම් පහත ලින්ක් එක ඕපන් කරන්න:');
+    console.log('QR ලින්ක් එක:');
     console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}&size=300x300`);
     console.log('--------------------------------------------------');
 });
@@ -35,26 +40,35 @@ client.on('ready', () => {
     console.log('බොට් සාර්ථකව වැඩ ආරම්භ කළා!');
 });
 
+// මැසේජ් හැසිරවීම
 client.on('message', async (msg) => {
-    if (msg.body.startsWith('!song')) {
+    const text = msg.body.toLowerCase();
+
+    // සරල හෙලෝ මැසේජ් එකක්
+    if (text === 'hi' || text === 'hello') {
+        return msg.reply('හෙලෝ! මම Nanofix Music Bot. සින්දුවක් සොයා ගැනීමට !song [නම] ලෙස ටයිප් කරන්න.');
+    }
+
+    // සින්දු සෙවීමේ කමාන්ඩ් එක
+    if (text.startsWith('!song')) {
         const songName = msg.body.replace('!song', '').trim();
-        if (!songName) return msg.reply('කරුණාකර සින්දුවේ නම ඇතුළත් කරන්න. උදා: !song Manike Mage Hithe');
+        if (!songName) return msg.reply('කරුණාකර සින්දුවේ නම ඇතුළත් කරන්න.');
 
         try {
-            msg.reply('සින්දුව සොයමින් පවතී... කරුණාකර රැඳී සිටින්න.');
+            msg.reply('සින්දුව සොයමින් පවතී... (Memory optimized mode)');
             
             const search = await yts(songName);
             const video = search.videos[0];
 
             if (!video) return msg.reply('සින්දුව සොයා ගැනීමට නොහැකි විය.');
 
-            const songUrl = video.url;
+            const response = `*සොයාගත් සින්දුව:* ${video.title}\n*කාලය:* ${video.timestamp}\n*Link:* ${video.url}\n\n_මෙම බොට් දැනට Beta මට්ටමේ පවතී._`;
             
-            await msg.reply(`*සොයාගත් සින්දුව:* ${video.title}\n*කාලය:* ${video.timestamp}\n\nමෙන්න ලින්ක් එක: ${songUrl}`);
+            await msg.reply(response);
 
         } catch (e) {
-            console.error(e);
-            msg.reply('Error එකක් ආවා. පසුව උත්සාහ කරන්න.');
+            console.error('Error:', e.message);
+            msg.reply('පද්ධතියේ දෝෂයක් පවතී. පසුව උත්සාහ කරන්න.');
         }
     }
 });
