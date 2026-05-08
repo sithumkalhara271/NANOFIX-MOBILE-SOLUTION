@@ -11,44 +11,36 @@ const client = new Client({
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--single-process',
-            '--no-zygote'
-        ],
-        // Render එකේදී chrome install වන සාමාන්‍ය ස්ථානය
-        executablePath: '/usr/bin/google-chrome-stable' 
+            '--disable-gpu',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process'
+        ]
+        // executablePath ලයින් එක මම අයින් කළා, ඒකයි ප්‍රශ්නය වුණේ.
     }
 });
 
-// QR Code එක පෙන්වීමට
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
-    console.log('කරුණාකර මෙම QR කේතය ස්කෑන් කරන්න!');
+    console.log('QR එක ස්කෑන් කරන්න:');
 });
 
 client.on('ready', () => {
-    console.log('බොට් සාර්ථකව වැඩ ආරම්භ කළා!');
+    console.log('Bot is ready!');
 });
 
 client.on('message', async (msg) => {
     if (msg.body.startsWith('!song')) {
         const songName = msg.body.replace('!song', '').trim();
-        if (!songName) return msg.reply('කරුණාකර සින්දුවේ නම ඇතුළත් කරන්න. උදා: !song Manike Mage Hithe');
-
+        if (!songName) return msg.reply('සින්දුවේ නම දෙන්න.');
         try {
-            msg.reply('සින්දුව සොයමින් පවතී... කරුණාකර රැඳී සිටින්න.');
-            
             const search = await yts(songName);
             const video = search.videos[0];
-
-            if (!video) return msg.reply('සින්දුව සොයා ගැනීමට නොහැකි විය.');
-
-            const songUrl = video.url;
-            
-            await msg.reply(`*සොයාගත් සින්දුව:* ${video.title}\n*කාලය:* ${video.timestamp}\n\nමෙන්න ලින්ක් එක: ${songUrl}`);
-
+            if (video) {
+                msg.reply(`සොයාගත්තා: ${video.title}\nLink: ${video.url}`);
+            }
         } catch (e) {
-            console.error(e);
-            msg.reply('Error එකක් ආවා. පසුව උත්සාහ කරන්න.');
+            msg.reply('Error එකක් ආවා.');
         }
     }
 });
