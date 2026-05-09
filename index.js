@@ -6,11 +6,12 @@ const yts = require('yt-search');
 const ytdl = require('@distube/ytdl-core');
 const fs = require('fs');
 
-// MongoDB Connection
+// MongoDB Connection URI
 const MONGO_URI = "mongodb+srv://sithumkalhara271:Sithum97531%40@cluster0.c3nyat4.mongodb.net/?appName=Cluster0";
 const BOT_NUMBER = '94781229710'; 
 
 mongoose.connect(MONGO_URI).then(() => {
+    console.log('✅ MongoDB හා සාර්ථකව සම්බන්ධ විය!');
     const store = new MongoStore({ mongoose: mongoose });
 
     const client = new Client({
@@ -28,7 +29,8 @@ mongoose.connect(MONGO_URI).then(() => {
                 '--no-zygote',
                 '--single-process'
             ],
-            executablePath: process.env.CHROME_BIN || null,
+            // Dockerfile එකේ අපි ලබාදුන් path එක මෙහි භාවිතා වේ
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
         }
     });
 
@@ -41,7 +43,7 @@ mongoose.connect(MONGO_URI).then(() => {
         console.log('✅ NANOFIX Bot සාර්ථකව සක්‍රිය විය!');
     });
 
-    // Pairing Code එක දර්ශනය කිරීම
+    // Pairing Code එක Deploy Logs වල බලාගැනීමට
     client.on('code', (code) => {
         console.log('\n---------------------------------');
         console.log('ඔබේ WhatsApp Pairing Code එක: ', code);
@@ -50,7 +52,7 @@ mongoose.connect(MONGO_URI).then(() => {
 
     client.initialize();
 
-    // Pairing Code ඉල්ලුම් කිරීම
+    // Pairing Code ඉල්ලුම් කිරීම (තත්පර 15 කට පසු)
     setTimeout(async () => {
         try {
             if (client.getPairingCode) {
@@ -61,7 +63,7 @@ mongoose.connect(MONGO_URI).then(() => {
         }
     }, 15000);
 
-    // !song command
+    // !song command එක ක්‍රියාත්මක කිරීම
     client.on('message', async (msg) => {
         if (msg.body.startsWith('!song')) {
             const songName = msg.body.replace('!song', '').trim();
@@ -83,8 +85,11 @@ mongoose.connect(MONGO_URI).then(() => {
                     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
                 });
             } catch (e) {
-                msg.reply('⚠️ සින්දුව ලබා ගැනීමේ දෝෂයක්.');
+                console.error(e);
+                msg.reply('⚠️ සින්දුව ලබා ගැනීමේ දෝෂයක්. (YouTube සීමාවන් නිසා විය හැක)');
             }
         }
     });
+}).catch(err => {
+    console.error('❌ MongoDB Connection Error:', err);
 });
