@@ -12,7 +12,8 @@
     "express": "^4.18.2",
     "wwebjs-mongo": "latest",
     "mongodb": "latest",
-    "mongoose": "latest"
+    "mongoose": "latest",
+    "ytdl-core": "latest"
   },
   "scripts": {
     "start": "node index.js",
