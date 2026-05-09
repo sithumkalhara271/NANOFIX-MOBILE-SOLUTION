@@ -9,7 +9,7 @@ const fs = require('fs');
 // 1. ඔබේ MongoDB Connection String එක
 const MONGO_URI = "mongodb+srv://sithumkalhara271:Sithum97531%40@cluster0.c3nyat4.mongodb.net/?appName=Cluster0";
 
-// 2. මෙතනට ඔබේ බොට් නම්බර් එක දාන්න (උදා: '94771234567')
+// 2. ඔබේ බොට් නම්බර් එක
 const BOT_NUMBER = '94781229710'; 
 
 mongoose.connect(MONGO_URI).then(() => {
@@ -41,7 +41,6 @@ mongoose.connect(MONGO_URI).then(() => {
         console.log('QR Code එක ස්කෑන් කරන්න අපහසු නම් පහළ Pairing Code එක එනකම් ඉන්න.');
     });
 
-    // Pairing Code ලබා ගැනීම
     client.on('ready', () => {
         console.log('බොට් සාර්ථකව වැඩ ආරම්භ කළා!');
     });
@@ -55,29 +54,28 @@ mongoose.connect(MONGO_URI).then(() => {
     // Pairing Code එක Generate කිරීම
     setTimeout(async () => {
         try {
-            // මෙතන BOT_NUMBER එක පාවිච්චි වේ
+            console.log('Pairing Code එක ලබා ගැනීමට උත්සාහ කරයි...');
             let code = await client.getPairingCode(BOT_NUMBER); 
             console.log('\n---------------------------------');
             console.log('ඔයාගේ WhatsApp Pairing Code එක: ', code);
             console.log('---------------------------------\n');
         } catch (err) {
-            console.log('Pairing Code ලබා ගැනීමේ දෝෂයක් (සමහරවිට දැනටමත් ලොග් වී ඇත): ', err.message);
+            console.log('Pairing Code ලබා ගැනීමේ දෝෂයක්: ', err.message);
         }
-    }, 10000); // තත්පර 10 කින් කෝඩ් එක පෙන්වයි
+    }, 15000); // තත්පර 15 කින් කෝඩ් එක පෙන්වයි
 
     // !song command එක
     client.on('message', async (msg) => {
         if (msg.body.startsWith('!song')) {
             const songName = msg.body.replace('!song', '').trim();
-            if (!songName) return msg.reply('කරුණාකර සින්දුවේ නම ඇතුළත් කරන්න. උදා: !song Manike Mage Hithe');
+            if (!songName) return msg.reply('කරුණාකර සින්දුවේ නම ඇතුළත් කරන්න.');
 
             try {
                 const search = await yts(songName);
                 const video = search.videos[0];
-
                 if (!video) return msg.reply('සින්දුව සොයා ගැනීමට නොහැකි විය.');
 
-                await msg.reply(`🎶 *සොයාගත් සින්දුව:* ${video.title}\n⏳ *කාලය:* ${video.timestamp}\n\nMP3 එක සකසමින් පවතී...`);
+                await msg.reply(`🎶 *සින්දුව:* ${video.title}\n⏳ *කාලය:* ${video.timestamp}\n\nMP3 එක සකසමින් පවතී...`);
 
                 const filePath = `./${video.videoId}.mp3`;
                 const stream = ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' });
