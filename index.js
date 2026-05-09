@@ -6,8 +6,11 @@ const yts = require('yt-search');
 const ytdl = require('ytdl-core');
 const fs = require('fs');
 
-// 1. ඔබේ MongoDB Connection String එක මෙතනට දාන්න
+// 1. ඔබේ MongoDB Connection String එක
 const MONGO_URI = "mongodb+srv://sithumkalhara271:Sithum97531%40@cluster0.c3nyat4.mongodb.net/?appName=Cluster0";
+
+// 2. මෙතනට ඔබේ බොට් නම්බර් එක දාන්න (උදා: '94771234567')
+const BOT_NUMBER = '94781229710'; 
 
 mongoose.connect(MONGO_URI).then(() => {
     const store = new MongoStore({ mongoose: mongoose });
@@ -15,8 +18,8 @@ mongoose.connect(MONGO_URI).then(() => {
     const client = new Client({
         authStrategy: new RemoteAuth({
             store: store,
-            backupSyncIntervalMs: 60000, // සෑම විනාඩියකටම බැකප් වේ
-            proxyAuthentication: { username: "username", password: "password" },
+            backupSyncIntervalMs: 60000,
+            clientId: "bot-session"
         }),
         puppeteer: {
             handleSIGINT: false,
@@ -24,8 +27,6 @@ mongoose.connect(MONGO_URI).then(() => {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
                 '--no-zygote',
                 '--single-process',
                 '--disable-gpu'
@@ -34,20 +35,35 @@ mongoose.connect(MONGO_URI).then(() => {
         }
     });
 
-    // QR Code එක පෙන්වීම
+    // QR Code එක (අවශ්‍ය වුවහොත් ලොග් එකේ පෙන්වයි)
     client.on('qr', (qr) => {
         qrcode.generate(qr, { small: true });
-        console.log('කරුණාකර මෙම QR කේතය ස්කෑන් කරන්න!');
+        console.log('QR Code එක ස්කෑන් කරන්න අපහසු නම් පහළ Pairing Code එක එනකම් ඉන්න.');
     });
 
-    // සෙෂන් එක සේව් වූ පසු
-    client.on('remote_session_saved', () => {
-        console.log('Session එක සාර්ථකව දුරස්ථව ගබඩා වුණා!');
-    });
-
+    // Pairing Code ලබා ගැනීම
     client.on('ready', () => {
         console.log('බොට් සාර්ථකව වැඩ ආරම්භ කළා!');
     });
+
+    client.on('remote_session_saved', () => {
+        console.log('Session එක සාර්ථකව Database එකේ සේව් වුණා!');
+    });
+
+    client.initialize();
+
+    // Pairing Code එක Generate කිරීම
+    setTimeout(async () => {
+        try {
+            // මෙතන BOT_NUMBER එක පාවිච්චි වේ
+            let code = await client.getPairingCode(BOT_NUMBER); 
+            console.log('\n---------------------------------');
+            console.log('ඔයාගේ WhatsApp Pairing Code එක: ', code);
+            console.log('---------------------------------\n');
+        } catch (err) {
+            console.log('Pairing Code ලබා ගැනීමේ දෝෂයක් (සමහරවිට දැනටමත් ලොග් වී ඇත): ', err.message);
+        }
+    }, 10000); // තත්පර 10 කින් කෝඩ් එක පෙන්වයි
 
     // !song command එක
     client.on('message', async (msg) => {
@@ -66,14 +82,9 @@ mongoose.connect(MONGO_URI).then(() => {
                 const filePath = `./${video.videoId}.mp3`;
                 const stream = ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' });
 
-                // සින්දුව ඩවුන්ලෝඩ් කර සේව් කිරීම
                 stream.pipe(fs.createWriteStream(filePath)).on('finish', async () => {
                     const media = MessageMedia.fromFilePath(filePath);
-                    
-                    // Audio එක document එකක් ලෙස යැවීම (ගුණාත්මකභාවය සුරැකීමට)
                     await client.sendMessage(msg.from, media, { sendAudioAsVoice: false });
-                    
-                    // යැවූ පසු file එක ඉවත් කිරීම
                     fs.unlinkSync(filePath);
                 }).on('error', (err) => {
                     console.error(err);
@@ -86,6 +97,4 @@ mongoose.connect(MONGO_URI).then(() => {
             }
         }
     });
-
-    client.initialize();
 });
