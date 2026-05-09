@@ -1,32 +1,55 @@
 const { Client, RemoteAuth, MessageMedia } = require('whatsapp-web.js');
 const { MongoStore } = require('wwebjs-mongo');
 const mongoose = require('mongoose');
-const qrcode = require('qrcode-terminal');
+const qrcode = require('qrcode'); // 'qrcode-terminal' වෙනුවට 'qrcode' පාවිච්චි කරමු
 const yts = require('yt-search');
 const ytdl = require('@distube/ytdl-core');
 const fs = require('fs');
-const express = require('express'); // Express ඇතුළත් කළා
+const express = require('express');
 
 const app = express();
 const port = process.env.PORT || 3000;
-let lastQR = ""; // අලුත්ම QR එක තබා ගැනීමට
+let lastQR = ""; 
 
-// Express සර්වර් එක ආරම්භ කිරීම
-app.get('/', (req, res) => {
+// Express සර්වර් එක - පැහැදිලි QR එකක් පෙන්වීමට
+app.get('/', async (req, res) => {
     if (lastQR) {
-        // QR එක වෙබ් පිටුවක පෙන්වීම
-        res.send(`
-            <html>
-                <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
-                    <h2>NANOFIX Bot QR Code</h2>
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(lastQR)}&size=300x300" alt="QR Code" />
-                    <p>කරුණාකර මෙය WhatsApp මගින් ස්කෑන් කරන්න.</p>
-                    <script>setTimeout(() => { location.reload(); }, 30000);</script>
-                </body>
-            </html>
-        `);
+        try {
+            // QR කේතය Image Data URL එකක් බවට පත් කිරීම
+            const qrImage = await qrcode.toDataURL(lastQR, {
+                margin: 2,
+                scale: 10
+            });
+            
+            res.send(`
+                <html>
+                    <head>
+                        <title>NANOFIX Bot QR</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background-color:#f4f7f6;margin:0;">
+                        <div style="background:white;padding:30px;border-radius:20px;box-shadow: 0 10px 25px rgba(0,0,0,0.1);text-align:center;max-width:90%;">
+                            <h2 style="color:#075e54;margin-bottom:20px;">NANOFIX Bot QR Code</h2>
+                            <img src="${qrImage}" style="width:100%;max-width:300px;border:1px solid #eee;" alt="QR Code" />
+                            <p style="margin-top:20px;color:#333;font-weight:bold;">කරුණාකර මෙය WhatsApp Link Devices හරහා ස්කෑන් කරන්න.</p>
+                            <p style="font-size:13px;color:#777;">සෑම තත්පර 30කටම වරක් මෙම පිටුව අලුත් වේ.</p>
+                        </div>
+                        <script>setTimeout(() => { location.reload(); }, 30000);</script>
+                    </body>
+                </html>
+            `);
+        } catch (err) {
+            res.send("QR එක උත්පාදනය කිරීමේදී දෝෂයක් ඇති විය.");
+        }
     } else {
-        res.send("<h2>QR Code එක තවම සූදානම් නැත. කරුණාකර තත්පර කිහිපයකින් Refresh කරන්න...</h2>");
+        res.send(`
+            <div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
+                <div style="text-align:center;">
+                    <h2>QR Code එක තවම සූදානම් නැත...</h2>
+                    <p>සර්වර් එක ආරම්භ වෙමින් පවතී. කරුණාකර තත්පර කිහිපයකින් Refresh කරන්න.</p>
+                </div>
+            </div>
+        `);
     }
 });
 
@@ -50,18 +73,17 @@ mongoose.connect(MONGO_URI).then(() => {
         puppeteer: {
             handleSIGINT: false,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--no-zygote'],
-            executablePath: '/usr/bin/google-chrome-stable'
+            executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome-stable'
         }
     });
 
     client.on('qr', (qr) => {
-        lastQR = qr; // QR එක Variable එකට දාගන්නවා
-        qrcode.generate(qr, { small: true });
-        console.log('👉 QR එක වෙබ් ලින්ක් එකෙන් බලන්න පුළුවන්.');
+        lastQR = qr; 
+        console.log('👉 අලුත් QR එකක් ලැබුණා. වෙබ් ලින්ක් එකෙන් බලන්න.');
     });
 
     client.on('ready', () => {
-        lastQR = ""; // Ready වූ පසු QR එක අයින් කරනවා
+        lastQR = ""; 
         console.log('✅ NANOFIX Bot සාර්ථකව සක්‍රිය විය!');
     });
 
