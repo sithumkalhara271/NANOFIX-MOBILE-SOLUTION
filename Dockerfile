@@ -1,9 +1,16 @@
+# Node.js version එක තෝරා ගැනීම (ඔබේ log එකේ තිබූ පරිදි 20 භාවිතා කිරීම වඩාත් සුදුසුයි)
+FROM node:20-slim
 
-# Node.js මූලික කරගත් image එකක් ලබා ගැනීම
-FROM node:18-slim
+# මෘදුකාංග ස්ථාපනයට අවශ්‍ය environment variables
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
-# Puppeteer සඳහා අවශ්‍ය කරන Linux dependencies ඉන්ස්ටෝල් කිරීම
+# පද්ධතියට අවශ්‍ය ලයිබ්‍රරි සහ Git ස්ථාපනය කිරීම
 RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    gnupg \
+    ca-certificates \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -37,22 +44,21 @@ RUN apt-get update && apt-get install -y \
     libxss1 \
     libxtst6 \
     lsb-release \
-    wget \
     xdg-utils \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
-# වැඩ කරන ඩිරෙක්ටරිය සකස් කිරීම
+# වැඩ කරන තැන (Working directory) සකස් කිරීම
 WORKDIR /app
 
 # Package ෆයිල්ස් කොපි කිරීම
 COPY package*.json ./
 
-# අවශ්‍ය කරන packages ඉන්ස්ටෝල් කිරීම
+# npm update කිරීම සහ dependencies install කිරීම
+RUN npm install -g npm@latest
 RUN npm install
 
-# සියලුම ෆයිල්ස් කොපි කිරීම
+# මුළු කේතයම (source code) කොපි කිරීම
 COPY . .
 
-# බොට් එක ස්ටාර්ට් කරන කමාන්ඩ් එක (බොට් එක රන් වෙන්නේ index.js එකෙන් නම්)
+# බොට් ආරම්භ කිරීම
 CMD ["node", "index.js"]
