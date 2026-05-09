@@ -7,7 +7,7 @@ const ytdl = require('ytdl-core');
 const fs = require('fs');
 
 // 1. ඔබේ MongoDB Connection String එක මෙතනට දාන්න
-const MONGO_URI = "mongodb+srv://sithumkalhara271:Sithum97531@@cluster0.c3nyat4.mongodb.net/?appName=Cluster0";
+const MONGO_URI = "mongodb+srv://sithumkalhara271:Sithum97531%40@cluster0.c3nyat4.mongodb.net/?appName=Cluster0";
 
 mongoose.connect(MONGO_URI).then(() => {
     const store = new MongoStore({ mongoose: mongoose });
