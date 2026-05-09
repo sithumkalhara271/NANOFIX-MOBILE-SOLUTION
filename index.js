@@ -11,6 +11,7 @@ app.get('/', (req, res) => res.send('Nanofix Bot is Running!'));
 app.listen(port, () => console.log(`Server on port ${port}`));
 
 const client = new Client({
+    mongodb+srv:sithumkalhara271:Sithum97531@@cluster0.c3nyat4.mongodb.net/?appName=Cluster0
     // මෙතන LocalAuth පාවිච්චි කරන්නේ Railway වල session එකක් තියාගන්නයි
     authStrategy: new RemoteAuth({
         // මෙතන session එක සේව් කරන විදිහ (RemoteAuth සඳහා mongoDB වැනි එකක් අවශ්‍ය වේ)
