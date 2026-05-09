@@ -1,85 +1,91 @@
 const { Client, RemoteAuth, MessageMedia } = require('whatsapp-web.js');
+const { MongoStore } = require('wwebjs-mongo');
+const mongoose = require('mongoose');
 const qrcode = require('qrcode-terminal');
 const yts = require('yt-search');
-const express = require('express');
-const axios = require('axios');
+const ytdl = require('ytdl-core');
+const fs = require('fs');
 
-// Express Server Setup
-const app = express();
-const port = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('Nanofix Bot is Running!'));
-app.listen(port, () => console.log(`Server on port ${port}`));
+// 1. ඔබේ MongoDB Connection String එක මෙතනට දාන්න
+const MONGO_URI = "mongodb+srv://sithumkalhara271:Sithum97531@@cluster0.c3nyat4.mongodb.net/?appName=Cluster0";
 
-const client = new Client({
-    mongodb+srv:sithumkalhara271:Sithum97531@@cluster0.c3nyat4.mongodb.net/?appName=Cluster0
-    // මෙතන LocalAuth පාවිච්චි කරන්නේ Railway වල session එකක් තියාගන්නයි
-    authStrategy: new RemoteAuth({
-        // මෙතන session එක සේව් කරන විදිහ (RemoteAuth සඳහා mongoDB වැනි එකක් අවශ්‍ය වේ)
-        // දැනට ලේසි වෙන්න LocalAuth ම මම පාවිච්චි කරනවා, 
-        // නමුත් Railway වල Persistent Volume එකක් නැති නිසා redeploy එකකදී QR එක ඕන වෙනවාමයි.
-    }),
-    puppeteer: {
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--single-process',
-            '--no-zygote',
-            '--disable-gpu'
-        ]
-    }
-});
+mongoose.connect(MONGO_URI).then(() => {
+    const store = new MongoStore({ mongoose: mongoose });
 
-const PREFIX = '.'; // ! වෙනුවට . යොදා ඇත
-
-client.on('qr', (qr) => {
-    console.log('QR LINK: https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(qr));
-});
-
-client.on('ready', () => {
-    console.log('Nanofix Bot is Ready!');
-});
-
-client.on('message_create', async (msg) => {
-    const text = msg.body.toLowerCase();
-
-    // .song කමාන්ඩ් එක
-    if (text.startsWith(`${PREFIX}song`)) {
-        const songName = msg.body.replace(`${PREFIX}song`, '').trim();
-        if (!songName) return msg.reply('කරුණාකර සින්දුවක නම ලබා දෙන්න. උදා: .song Manike');
-
-        try {
-            const search = await yts(songName);
-            const video = search.videos[0];
-            if (!video) return msg.reply('සින්දුව හමුවුනේ නැත.');
-
-            await client.sendMessage(msg.from, `🎶 *Nanofix Music Downloader*\n\n📌 *නම:* ${video.title}\n⏳ *කාලය:* ${video.timestamp}\n\n*MP3 එක සකසමින් පවතී...*`);
-
-            const apiUrl = `https://api.giftedtech.my.id/api/download/dlmp3?url=${encodeURIComponent(video.url)}`;
-            const res = await axios.get(apiUrl);
-            
-            if (res.data && res.data.success) {
-                const media = await MessageMedia.fromUrl(res.data.result.download_url);
-                await client.sendMessage(msg.from, media, { sendAudioAsVoice: false });
-            } else {
-                await client.sendMessage(msg.from, 'Error: MP3 ලබා ගැනීමට නොහැකි විය.');
-            }
-        } catch (e) {
-            await client.sendMessage(msg.from, 'Error: යම් දෝෂයක් සිදු විය.');
+    const client = new Client({
+        authStrategy: new RemoteAuth({
+            store: store,
+            backupSyncIntervalMs: 60000, // සෑම විනාඩියකටම බැකප් වේ
+            proxyAuthentication: { username: "username", password: "password" },
+        }),
+        puppeteer: {
+            handleSIGINT: false,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-gpu'
+            ],
+            executablePath: process.env.CHROME_BIN || null,
         }
-    }
+    });
 
-    // .alive කමාන්ඩ් එක (බොට් වැඩද බලන්න)
-    if (text === `${PREFIX}alive`) {
-        msg.reply('Nanofix Bot වැඩ කරනවා! ✅');
-    }
+    // QR Code එක පෙන්වීම
+    client.on('qr', (qr) => {
+        qrcode.generate(qr, { small: true });
+        console.log('කරුණාකර මෙම QR කේතය ස්කෑන් කරන්න!');
+    });
 
-    // .restart කමාන්ඩ් එක (බොට්ව නැවත පණගැන්වීමට)
-    if (text === `${PREFIX}restart`) {
-        await msg.reply('බොට් නැවත පණගැන්වෙමින් පවතී... (Redeploy කිරීම නිර්දේශ කෙරේ)');
-        process.exit(); // මෙය සිදුවූ විට Railway බොට්ව ඔටෝම restart කරයි
-    }
+    // සෙෂන් එක සේව් වූ පසු
+    client.on('remote_session_saved', () => {
+        console.log('Session එක සාර්ථකව දුරස්ථව ගබඩා වුණා!');
+    });
+
+    client.on('ready', () => {
+        console.log('බොට් සාර්ථකව වැඩ ආරම්භ කළා!');
+    });
+
+    // !song command එක
+    client.on('message', async (msg) => {
+        if (msg.body.startsWith('!song')) {
+            const songName = msg.body.replace('!song', '').trim();
+            if (!songName) return msg.reply('කරුණාකර සින්දුවේ නම ඇතුළත් කරන්න. උදා: !song Manike Mage Hithe');
+
+            try {
+                const search = await yts(songName);
+                const video = search.videos[0];
+
+                if (!video) return msg.reply('සින්දුව සොයා ගැනීමට නොහැකි විය.');
+
+                await msg.reply(`🎶 *සොයාගත් සින්දුව:* ${video.title}\n⏳ *කාලය:* ${video.timestamp}\n\nMP3 එක සකසමින් පවතී...`);
+
+                const filePath = `./${video.videoId}.mp3`;
+                const stream = ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' });
+
+                // සින්දුව ඩවුන්ලෝඩ් කර සේව් කිරීම
+                stream.pipe(fs.createWriteStream(filePath)).on('finish', async () => {
+                    const media = MessageMedia.fromFilePath(filePath);
+                    
+                    // Audio එක document එකක් ලෙස යැවීම (ගුණාත්මකභාවය සුරැකීමට)
+                    await client.sendMessage(msg.from, media, { sendAudioAsVoice: false });
+                    
+                    // යැවූ පසු file එක ඉවත් කිරීම
+                    fs.unlinkSync(filePath);
+                }).on('error', (err) => {
+                    console.error(err);
+                    msg.reply('සින්දුව ඩවුන්ලෝඩ් කිරීමේදී දෝෂයක් ඇති විය.');
+                });
+
+            } catch (e) {
+                console.log(e);
+                msg.reply('Error එකක් ආවා. පසුව උත්සාහ කරන්න.');
+            }
+        }
+    });
+
+    client.initialize();
 });
-
-client.initialize();
